@@ -1,418 +1,409 @@
-## 2. Workbench 统一Web应用设计方案
+# Workbench 智慧校园系统 - Go + PostgreSQL + Redis 架构设计
 
-### 📋 应用概述
+## 🚀 技术栈架构
 
-Workbench 是一个统一的智慧校园Web应用，根据用户角色（教师/学生）动态展示相应功能界面，提供完整的教学管理和学习体验。
-
-### 🎨 统一设计语言
-
-#### 视觉设计系统
+### 后端技术栈
+```yaml
+编程语言: Go 1.21+
+Web框架: 
+  - Gin (HTTP API)
+  - GORM (ORM)
+  - go-redis (Redis客户端)
+数据库:
+  - PostgreSQL 15+ (主数据存储)
+  - Redis 7.0+ (缓存/会话/消息队列)
+消息队列: 
+  - Redis Streams (轻量级消息队列)
+  - 或 NSQ (可选，用于高吞吐场景)
+实时通信:
+  - WebSocket (gorilla/websocket)
+  - Server-Sent Events (SSE)
+工具库:
+  - validator (数据验证)
+  - jwt-go (认证)
+  - bcrypt (加密)
+  - zap (日志)
+  - viper (配置管理)
 ```
-色彩体系：
-- 主色调：智慧蓝 (#1E40AF)
-- 辅助色：活力橙 (#EA580C) - 教师强调色
-- 辅助色：成长绿 (#16A34A) - 学生强调色
-- 中性色：灰阶 palette (#F8FAFC → #0F172A)
 
-字体系统：
-- 英文：Inter, system-ui
-- 中文：PingFang SC, HarmonyOS Sans SC
-- 代码：JetBrains Mono
-
-设计Token：
-- 间距：4px基数 (4,8,12,16,20,24,32,40,48,64,80,96)
-- 圆角：小(4px)、中(8px)、大(12px)
-- 阴影：3级阴影系统
+### 前端技术栈 (保持不变，与plan.md一致)
+```typescript
+React 18 + TypeScript + Vite + Ant Design
 ```
 
-#### 角色差异化设计
-```css
-/* 教师主题 */
-.teacher-theme {
-  --primary: #1E40AF;
-  --primary-foreground: #EFF6FF;
-  --accent: #EA580C;
+## 🏗️ 系统架构设计
+
+### 后端微服务架构
+```
+Workbench Backend (Go)
+├── API网关层
+│   ├── 请求路由 & 负载均衡
+│   ├── JWT认证中间件
+│   ├── 速率限制 (Redis)
+│   ├── 请求日志 & 审计
+│   └── CORS处理
+├── 业务服务层
+│   ├── 用户服务 (auth.go, user.go)
+│   ├── 课程服务 (course.go, class.go)
+│   ├── 作业服务 (assignment.go, submission.go)
+│   ├── 成绩服务 (grade.go, analysis.go)
+│   ├── 消息服务 (message.go, notification.go)
+│   └── 文件服务 (upload.go, file.go)
+├── 数据访问层
+│   ├── PostgreSQL (GORM)
+│   ├── Redis (缓存 & 会话)
+│   └── 数据库连接池
+└── 支撑服务层
+    ├── 定时任务 (cron)
+    ├── 实时通信 (WebSocket)
+    ├── 文件存储 (本地/MinIO)
+    └── 监控告警 (Prometheus)
+```
+
+## 🗄️ 数据库设计
+
+### PostgreSQL 核心表结构
+
+```sql
+-- 用户表
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('teacher', 'student', 'admin')),
+    full_name VARCHAR(100) NOT NULL,
+    avatar_url VARCHAR(255),
+    is_active BOOLEAN DEFAULT true,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 课程表
+CREATE TABLE courses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    teacher_id UUID NOT NULL REFERENCES users(id),
+    semester VARCHAR(50),
+    credits INTEGER DEFAULT 0,
+    is_published BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 课程-学生关联表
+CREATE TABLE course_students (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses(id),
+    student_id UUID NOT NULL REFERENCES users(id),
+    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
+    status VARCHAR(20) DEFAULT 'active',
+    UNIQUE(course_id, student_id)
+);
+
+-- 作业表
+CREATE TABLE assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    course_id UUID NOT NULL REFERENCES courses(id),
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    due_date TIMESTAMPTZ NOT NULL,
+    max_score INTEGER DEFAULT 100,
+    assignment_type VARCHAR(50) DEFAULT 'homework',
+    attachments JSONB,
+    created_by UUID NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 作业提交表
+CREATE TABLE submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    assignment_id UUID NOT NULL REFERENCES assignments(id),
+    student_id UUID NOT NULL REFERENCES users(id),
+    content TEXT,
+    attachments JSONB,
+    submitted_at TIMESTAMPTZ DEFAULT NOW(),
+    status VARCHAR(20) DEFAULT 'submitted',
+    score INTEGER,
+    feedback TEXT,
+    graded_by UUID REFERENCES users(id),
+    graded_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(assignment_id, student_id)
+);
+
+-- 消息表
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL REFERENCES users(id),
+    receiver_id UUID REFERENCES users(id),
+    course_id UUID REFERENCES courses(id),
+    title VARCHAR(200),
+    content TEXT NOT NULL,
+    message_type VARCHAR(50) DEFAULT 'notification',
+    is_read BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 创建索引优化查询性能
+CREATE INDEX idx_courses_teacher_id ON courses(teacher_id);
+CREATE INDEX idx_course_students_course_id ON course_students(course_id);
+CREATE INDEX idx_course_students_student_id ON course_students(student_id);
+CREATE INDEX idx_assignments_course_id ON assignments(course_id);
+CREATE INDEX idx_submissions_assignment_id ON submissions(assignment_id);
+CREATE INDEX idx_submissions_student_id ON submissions(student_id);
+CREATE INDEX idx_messages_receiver_id ON messages(receiver_id);
+CREATE INDEX idx_messages_course_id ON messages(course_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
+```
+
+### Redis 数据结构设计
+
+```go
+// Redis Key 设计模式
+type RedisKeys struct {
+    // 用户会话
+    UserSession(userID string) string { return fmt.Sprintf("session:%s", userID) }
+    
+    // 课程缓存
+    CourseCache(courseID string) string { return fmt.Sprintf("course:%s", courseID) }
+    
+    // 作业缓存
+    AssignmentCache(assignmentID string) string { return fmt.Sprintf("assignment:%s", assignmentID) }
+    
+    // 限流器
+    RateLimit(key string) string { return fmt.Sprintf("ratelimit:%s", key) }
+    
+    // 在线用户
+    OnlineUsers() string { return "online:users" }
+    
+    // 消息队列
+    MessageQueue() string { return "queue:messages" }
+}
+```
+
+## 🔧 Go 项目结构
+
+```
+workbench-backend/
+├── cmd/
+│   └── api/
+│       └── main.go                 # 应用入口
+├── internal/
+│   ├── config/
+│   │   └── config.go              # 配置管理
+│   ├── database/
+│   │   ├── postgres.go            # PostgreSQL连接
+│   │   └── redis.go               # Redis连接
+│   ├── models/
+│   │   ├── user.go
+│   │   ├── course.go
+│   │   ├── assignment.go
+│   │   └── ...                    # 其他数据模型
+│   ├── handlers/
+│   │   ├── auth.go
+│   │   ├── user.go
+│   │   ├── course.go
+│   │   └── ...                    # HTTP处理器
+│   ├── services/
+│   │   ├── auth_service.go
+│   │   ├── course_service.go
+│   │   ├── assignment_service.go
+│   │   └── ...                    # 业务逻辑层
+│   ├── repositories/
+│   │   ├── user_repo.go
+│   │   ├── course_repo.go
+│   │   ├── assignment_repo.go
+│   │   └── ...                    # 数据访问层
+│   ├── middleware/
+│   │   ├── auth.go
+│   │   ├── cors.go
+│   │   ├── logger.go
+│   │   └── ratelimit.go           # 中间件
+│   ├── utils/
+│   │   ├── jwt.go
+│   │   ├── password.go
+│   │   ├── validator.go
+│   │   └── ...                    # 工具函数
+│   └── websocket/
+│       ├── hub.go
+│       ├── client.go
+│       └── handler.go             # WebSocket服务
+├── pkg/
+│   ├── response/
+│   │   └── response.go            # 统一响应格式
+│   └── cache/
+│       └── cache.go               # 缓存工具
+├── deployments/
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   └── nginx.conf
+├── scripts/
+│   ├── migrate.go                 # 数据库迁移
+│   └── seed.go                    # 数据填充
+├── go.mod
+└── go.sum
+```
+
+## 🎯 核心API设计
+
+### 认证模块
+```go
+// auth.go
+type AuthHandler struct {
+    userService services.UserService
+    jwtUtil     utils.JWTUtil
 }
 
-/* 学生主题 */  
-.student-theme {
-  --primary: #16A34A;
-  --primary-foreground: #F0FDF4;
-  --accent: #1E40AF;
+func (h *AuthHandler) Login(c *gin.Context) {
+    var req LoginRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        response.BadRequest(c, "无效的请求参数")
+        return
+    }
+    
+    user, err := h.userService.Authenticate(req.Username, req.Password)
+    if err != nil {
+        response.Unauthorized(c, "用户名或密码错误")
+        return
+    }
+    
+    token, err := h.jwtUtil.GenerateToken(user.ID, user.Role)
+    if err != nil {
+        response.ServerError(c, "生成token失败")
+        return
+    }
+    
+    response.Success(c, LoginResponse{
+        Token: token,
+        User:  user.ToDTO(),
+    })
 }
 ```
 
-### 🛠️ 技术栈设计
+### 课程服务
+```go
+// course_service.go
+type CourseService struct {
+    courseRepo repositories.CourseRepository
+    cache      cache.Cache
+}
 
-#### 前端技术栈
-```typescript
-// 核心框架
-- React 18 + TypeScript 5.0
-- Vite 5.0 (构建工具)
-- PNPM (包管理器)
-
-// UI框架
-- Ant Design 5.x + 自定义主题
-- Styled Components (CSS-in-JS)
-- Framer Motion (动画)
-
-// 状态管理
-- Redux Toolkit + RTK Query
-- React Hook Form (表单)
-- React Router v6 (路由)
-
-// 功能库
-- Socket.IO Client 4.7 (实时通信)
-- React PDF (文档预览)
-- CodeMirror 6 (代码编辑器)
-- Chart.js (数据可视化)
-
-// 工具库
-- Day.js (日期处理)
-- Axios (HTTP客户端)
-- Zod (数据验证)
+func (s *CourseService) GetTeacherCourses(teacherID string, page, pageSize int) (*PaginationResponse, error) {
+    cacheKey := fmt.Sprintf("teacher_courses:%s:%d:%d", teacherID, page, pageSize)
+    
+    // 尝试从缓存获取
+    var result PaginationResponse
+    if err := s.cache.Get(cacheKey, &result); err == nil {
+        return &result, nil
+    }
+    
+    // 缓存未命中，查询数据库
+    courses, total, err := s.courseRepo.FindByTeacherID(teacherID, page, pageSize)
+    if err != nil {
+        return nil, err
+    }
+    
+    result = PaginationResponse{
+        Data:  courses,
+        Total: total,
+        Page:  page,
+    }
+    
+    // 写入缓存，过期时间5分钟
+    s.cache.Set(cacheKey, result, 5*time.Minute)
+    
+    return &result, nil
+}
 ```
 
-#### 后端技术栈
-```typescript
-// 运行时
-- Node.js 18+ LTS
-- TypeScript 5.0
+## 🐳 容器化部署
 
-// 框架
-- NestJS 10.0 (企业级框架)
-- Express (底层HTTP)
-
-// 数据库
-- PostgreSQL 15 (主数据库)
-- Redis 7.0 (缓存/会话)
-
-// ORM与工具
-- Prisma 5.0 (ORM)
-- Class Validator (数据验证)
-- JWT (认证)
-- Bcrypt (加密)
-
-// 文件处理
-- Multer (文件上传)
-- Sharp (图片处理)
-```
-
-### 🏗️ 应用架构
-
-#### 前端架构
-```
-Workbench Web App
-├── 核心层
-│   ├── 认证模块 (RBAC权限)
-│   ├── 路由守卫 (角色路由)
-│   └── 主题管理 (动态换肤)
-├── 通用组件层
-│   ├── 布局组件
-│   ├── 业务组件
-│   └── UI组件
-├── 功能模块层
-│   ├── 仪表盘 (角色专属)
-│   ├── 课程管理
-│   ├── 作业系统
-│   ├── 成绩管理
-│   ├── 实时通信
-│   └── 个人中心
-└── 服务层
-    ├── API服务
-    ├── WebSocket服务
-    └── 工具函数
-```
-
-#### 后端微服务架构
-```
-Workbench Backend
-├── API网关
-│   ├── 请求路由
-│   ├── 身份验证
-│   ├── 速率限制
-│   └── 日志记录
-├── 核心服务
-│   ├── 用户服务 (认证、权限、资料)
-│   ├── 课程服务 (课程、班级、课表)
-│   ├── 作业服务 (作业、提交、批改)
-│   ├── 成绩服务 (成绩、统计、分析)
-│   ├── 消息服务 (聊天、通知、广播)
-│   └── 文件服务 (上传、存储、管理)
-└── 支撑服务
-    ├── 数据库 (PostgreSQL)
-    ├── 缓存 (Redis)
-    ├── 消息队列 (Bull Queue)
-    └── 实时通信 (Socket.IO)
-```
-
-### 🔧 核心功能模块
-
-#### 通用功能模块
-```
-通用功能
-├── 用户认证
-│   ├── 登录/注册
-│   ├── 权限验证
-│   └── 会话管理
-├── 个人中心
-│   ├── 个人信息
-│   ├── 消息通知
-│   └── 偏好设置
-└── 系统功能
-    ├── 文件管理
-    ├── 搜索功能
-    └── 帮助中心
-```
-
-#### 教师专属功能
-```
-教师工作台
-├── 教学仪表盘
-│   ├── 课程概览
-│   ├── 待办事项
-│   └── 快速操作
-├── 班级管理
-│   ├── 学生管理
-│   ├── 座位安排
-│   └── 考勤统计
-├── 教学工具
-│   ├── 作业发布
-│   ├── 在线批改
-│   ├── 成绩录入
-│   └── 课堂活动
-└── 数据分析
-    ├── 学情分析
-    ├── 成绩统计
-    └── 教学报告
-```
-
-#### 学生专属功能
-```
-学生学习台
-├── 学习空间
-│   ├── 我的课程
-│   ├── 学习进度
-│   └── 课程表
-├── 作业中心
-│   ├── 作业列表
-│   ├── 作业提交
-│   └── 成绩查询
-├── 协作学习
-│   ├── 班级讨论
-│   ├── 学习小组
-│   └── 资源分享
-└── 个人成长
-    ├── 学习档案
-    ├── 成就系统
-    └── 学习统计
-```
-
-### 🐳 Docker部署配置
-
-#### 1. 前端Dockerfile
+### 后端 Dockerfile
 ```dockerfile
-# 前端 Dockerfile
-FROM node:18-alpine AS builder
+# 多阶段构建
+FROM golang:1.21-alpine AS builder
 
-# 设置工作目录
 WORKDIR /app
-
-# 复制包管理文件
-COPY package.json pnpm-lock.yaml* ./
-
-# 安装 pnpm
-RUN npm install -g pnpm
 
 # 安装依赖
-RUN pnpm install --frozen-lockfile
+RUN apk add --no-cache git ca-certificates tzdata
+
+# 复制go模块文件
+COPY go.mod go.sum ./
+RUN go mod download
 
 # 复制源代码
 COPY . .
 
 # 构建应用
-RUN pnpm build
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
 
-# 生产阶段
-FROM nginx:alpine
+# 生产镜像
+FROM alpine:latest
 
-# 复制构建产物
-COPY --from=builder /app/dist /usr/share/nginx/html
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root/
 
-# 复制 nginx 配置
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# 复制启动脚本
-COPY docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
-
-# 暴露端口
-EXPOSE 80
-
-# 启动 nginx
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-#### 2. 前端Nginx配置
-```nginx
-# nginx.conf
-events {
-    worker_connections 1024;
-}
-
-http {
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    # 日志格式
-    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
-                    '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for"';
-
-    access_log /var/log/nginx/access.log main;
-    error_log /var/log/nginx/error.log warn;
-
-    # Gzip压缩
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/javascript
-        application/xml+rss
-        application/json;
-
-    server {
-        listen 80;
-        server_name localhost;
-        root /usr/share/nginx/html;
-        index index.html;
-
-        # 静态资源缓存
-        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
-
-        # SPA路由支持
-        location / {
-            try_files $uri $uri/ /index.html;
-        }
-
-        # API代理
-        location /api/ {
-            proxy_pass http://backend:3001;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection 'upgrade';
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_cache_bypass $http_upgrade;
-        }
-
-        # WebSocket代理
-        location /socket.io/ {
-            proxy_pass http://backend:3001;
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
-}
-```
-
-#### 3. 前端启动脚本
-```bash
-#!/bin/bash
-# docker-entrypoint.sh
-
-# 替换环境变量
-envsubst < /usr/share/nginx/html/env.template.js > /usr/share/nginx/html/env.js
-
-# 启动 nginx
-exec "$@"
-```
-
-#### 4. 后端Dockerfile
-```dockerfile
-# 后端 Dockerfile
-FROM node:18-alpine AS builder
-
-# 安装构建依赖
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    libc6-compat
-
-WORKDIR /app
-
-# 复制包文件
-COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
-
-# 复制源代码
-COPY . .
-
-# 构建应用
-RUN pnpm build
-
-# 生产阶段
-FROM node:18-alpine AS production
-
-# 安装运行时依赖
-RUN apk add --no-cache \
-    dumb-init \
-    libc6-compat
-
-WORKDIR /app
+# 复制二进制文件
+COPY --from=builder /app/main .
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 
 # 创建非root用户
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-
-# 复制构建产物和依赖
-COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
-
-# 复制 Prisma 相关文件
-COPY --from=builder /app/prisma ./prisma
-
-# 生成 Prisma 客户端
-RUN npx prisma generate
+RUN addgroup -g 1001 -S app && \
+    adduser -u 1001 -S app -G app
 
 # 切换用户
-USER nextjs
+USER app
 
 # 暴露端口
-EXPOSE 3001
+EXPOSE 8080
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node dist/health-check.js
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# 启动应用
-CMD ["dumb-init", "node", "dist/main.js"]
+CMD ["./main"]
 ```
 
-#### 5. Docker Compose配置
+### 更新后的 docker-compose.yml
 ```yaml
-# docker-compose.yml
 version: '3.8'
 
 services:
-  # 前端服务
+  # Go后端服务
+  backend:
+    build:
+      context: ./workbench-backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=smartcampus
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_URL=redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - campus-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 前端服务 (保持不变)
   frontend:
     build:
       context: ./frontend
@@ -420,34 +411,13 @@ services:
     ports:
       - "80:80"
     environment:
-      - API_BASE_URL=http://localhost:3001
+      - API_BASE_URL=http://backend:8080
     depends_on:
       - backend
     networks:
       - campus-network
 
-  # 后端服务
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgresql://postgres:password@postgres:5432/smartcampus
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=your-jwt-secret
-      - UPLOAD_PATH=/app/uploads
-    volumes:
-      - uploads:/app/uploads
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - campus-network
-
-  # 数据库
+  # PostgreSQL数据库
   postgres:
     image: postgres:15-alpine
     environment:
@@ -459,84 +429,152 @@ services:
       - ./init-db:/docker-entrypoint-initdb.d
     networks:
       - campus-network
+    command: >
+      postgres 
+      -c shared_preload_libraries=pg_stat_statements 
+      -c pg_stat_statements.track=all 
+      -c max_connections=200 
+      -c shared_buffers=256MB 
+      -c effective_cache_size=1GB
 
   # Redis缓存
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
-    networks:
-      - campus-network
-
-  # 反向代理 (可选)
-  nginx-proxy:
-    image: nginx:alpine
-    ports:
-      - "443:443"
-      - "80:80"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - frontend
     networks:
       - campus-network
 
 volumes:
   postgres_data:
   redis_data:
-  uploads:
 
 networks:
   campus-network:
     driver: bridge
 ```
 
-#### 6. 环境配置模板
-```javascript
-// frontend/public/env.template.js
-window.env = {
-  API_BASE_URL: '${API_BASE_URL:-http://localhost:3001}',
-  WS_BASE_URL: '${WS_BASE_URL:-ws://localhost:3001}',
-  NODE_ENV: '${NODE_ENV:-production}',
-  VERSION: '${VERSION:-1.0.0}'
-};
+## ⚡ 性能优化配置
+
+### PostgreSQL 配置优化
+```sql
+-- 高并发配置
+ALTER SYSTEM SET max_connections = 200;
+ALTER SYSTEM SET shared_buffers = '256MB';
+ALTER SYSTEM SET effective_cache_size = '1GB';
+ALTER SYSTEM SET work_mem = '4MB';
+ALTER SYSTEM SET maintenance_work_mem = '64MB';
+ALTER SYSTEM SET random_page_cost = 1.1;
+ALTER SYSTEM SET effective_io_concurrency = 200;
 ```
 
-### 🚀 部署说明
+### Go 服务配置
+```go
+// config/config.go
+type Config struct {
+    Server struct {
+        Port         string        `mapstructure:"port"`
+        ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+        WriteTimeout time.Duration `mapstructure:"write_timeout"`
+        IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
+    } `mapstructure:"server"`
+    
+    Database struct {
+        MaxOpenConns int `mapstructure:"max_open_conns"`
+        MaxIdleConns int `mapstructure:"max_idle_conns"`
+        ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+    } `mapstructure:"database"`
+    
+    Redis struct {
+        PoolSize int `mapstructure:"pool_size"`
+        MinIdleConns int `mapstructure:"min_idle_conns"`
+    } `mapstructure:"redis"`
+}
 
-#### 构建和运行
-```bash
-# 构建所有服务
-docker-compose build
-
-# 启动服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
+// 推荐的配置值
+func DefaultConfig() *Config {
+    return &Config{
+        Server: struct{
+            Port string
+            ReadTimeout time.Duration
+            WriteTimeout time.Duration  
+            IdleTimeout time.Duration
+        }{
+            Port: "8080",
+            ReadTimeout: 15 * time.Second,
+            WriteTimeout: 15 * time.Second,
+            IdleTimeout: 60 * time.Second,
+        },
+        Database: struct{
+            MaxOpenConns int
+            MaxIdleConns int
+            ConnMaxLifetime time.Duration
+        }{
+            MaxOpenConns: 25,
+            MaxIdleConns: 25,
+            ConnMaxLifetime: 5 * time.Minute,
+        },
+        Redis: struct{
+            PoolSize int
+            MinIdleConns int
+        }{
+            PoolSize: 10,
+            MinIdleConns: 5,
+        },
+    }
+}
 ```
 
-#### 环境变量配置
-创建 `.env` 文件：
-```env
-# 数据库配置
-DATABASE_URL=postgresql://postgres:password@postgres:5432/smartcampus
-REDIS_URL=redis://redis:6379
+## 🔒 安全设计
 
-# JWT配置
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRES_IN=7d
+### JWT 认证流程
+```go
+// middleware/auth.go
+func AuthMiddleware(jwtUtil utils.JWTUtil) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        tokenString := c.GetHeader("Authorization")
+        if tokenString == "" {
+            response.Unauthorized(c, "缺少认证token")
+            c.Abort()
+            return
+        }
+        
+        claims, err := jwtUtil.ValidateToken(tokenString)
+        if err != nil {
+            response.Unauthorized(c, "无效的token")
+            c.Abort()
+            return
+        }
+        
+        // 将用户信息存入上下文
+        c.Set("userID", claims.UserID)
+        c.Set("userRole", claims.Role)
+        c.Next()
+    }
+}
 
-# 文件上传
-MAX_FILE_SIZE=50MB
-UPLOAD_PATH=/app/uploads
-
-# 应用配置
-API_BASE_URL=http://localhost:3001
-NODE_ENV=production
+// 基于角色的访问控制
+func RBAC(allowedRoles ...string) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        userRole, exists := c.Get("userRole")
+        if !exists {
+            response.Unauthorized(c, "未认证用户")
+            c.Abort()
+            return
+        }
+        
+        for _, role := range allowedRoles {
+            if userRole == role {
+                c.Next()
+                return
+            }
+        }
+        
+        response.Forbidden(c, "权限不足")
+        c.Abort()
+    }
+}
 ```
+
+这个新的架构设计充分利用了 Go 语言的高并发特性和 PostgreSQL + Redis 的高性能组合，能够很好地支撑智慧校园系统的高并发访问和复杂的业务逻辑需求。
