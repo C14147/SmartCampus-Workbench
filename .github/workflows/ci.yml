@@ -12,8 +12,11 @@ env:
 
 jobs:
   build-backend:
-    name: Lint & Build Backend
-    runs-on: ubuntu-latest
+    name: Lint & Build Backend (matrix)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,7 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.24'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -62,13 +65,20 @@ jobs:
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
           go mod download
-          CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/api
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            set -x
+            GOOS=windows GOARCH=amd64 go build -v -o main.exe ./cmd/api
+          else
+            CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/api
+          fi
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
-          name: backend-binary
-          path: backend/main
+          name: backend-binary-${{ matrix.os }}
+          path: |
+            ${{ env.BACKEND_DIR }}/main
+            ${{ env.BACKEND_DIR }}/main.exe
 
   build-frontend:
     name: Build Frontend
