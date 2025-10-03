@@ -11,12 +11,9 @@ env:
   FRONTEND_DIR: frontend
 
 jobs:
-  build-backend:
-    name: Lint & Build Backend (matrix)
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+  build-backend-linux:
+    name: Lint & Build Backend (Linux)
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,54 +33,80 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Go fmt check
+      - name: Download Libs
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
           go mod download
-        #   fmtout=$(gofmt -s -l . | wc -l) || true
-        #   if [ "$fmtout" -ne "0" ]; then
-        #     echo "gofmt needs to run on some files";
-        #     gofmt -s -w .;
-        #     exit 1;
-        #   fi
 
       - name: Go vet
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
           go vet ./...
 
-    #   - name: Optionally run golangci-lint
-    #     if: fileExists('backend/.golangci.yml') || always()
-    #     run: |
-    #       if command -v golangci-lint >/dev/null 2>&1; then
-    #         (cd backend && golangci-lint run) || true
-    #       else
-    #         echo "golangci-lint not installed; skipping"
-    #       fi
-
-      - name: Build backend
+      - name: Build backend (Linux)
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
           go mod download
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            set GOOS=windows GOARCH=amd64 
-            go build -v -o main.exe ./cmd/api
-          else
-            CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/api
-          fi
+          CGO_ENABLED=0 GOOS=linux go build -v -o main ./cmd/api
 
-      - name: Upload backend artifact
+      - name: Upload backend artifact (Linux)
         uses: actions/upload-artifact@v4
         with:
-          name: backend-binary-${{ matrix.os }}
-          path: |
-            ${{ env.BACKEND_DIR }}/main
-            ${{ env.BACKEND_DIR }}/main.exe
+          name: backend-binary-linux
+          path: ${{ env.BACKEND_DIR }}/main
 
-  build-frontend:
-    name: Build Frontend
+  build-backend-windows:
+    name: Lint & Build Backend (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            %LOCALAPPDATA%\go-build
+            %USERPROFILE%\go\pkg\mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Download Libs
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: |
+          go mod download
+
+      - name: Go vet (Windows)
+        working-directory: ${{ env.BACKEND_DIR }}
+        shell: pwsh
+        run: |
+          go vet ./...
+
+      - name: Build backend (Windows)
+        working-directory: ${{ env.BACKEND_DIR }}
+        shell: pwsh
+        run: |
+          go mod download
+          $Env:GOOS = 'windows'
+          $Env:GOARCH = 'amd64'
+          go build -v -o main.exe ./cmd/api
+
+      - name: Upload backend artifact (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-binary-windows
+          path: ${{ env.BACKEND_DIR }}\main.exe
+
+  build-frontend-linux:
+    name: Build Frontend (Linux)
     runs-on: ubuntu-latest
-    needs: build-backend
+    needs: [build-backend-linux, build-backend-windows]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -101,15 +124,49 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install and build frontend
+      - name: Install and build frontend (Linux)
         working-directory: ${{ env.FRONTEND_DIR }}
         run: |
           npm ci
           npm run build
 
-      - name: Upload frontend dist
+      - name: Upload frontend dist (Linux)
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-dist
+          name: frontend-dist-linux
           path: frontend/dist
+
+  build-frontend-windows:
+    name: Build Frontend (Windows)
+    runs-on: windows-latest
+    needs: [build-backend-linux, build-backend-windows]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache node modules (Windows)
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}\_nvm
+          key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install and build frontend (Windows)
+        working-directory: ${{ env.FRONTEND_DIR }}
+        shell: pwsh
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload frontend dist (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-windows
+          path: frontend\dist
 
