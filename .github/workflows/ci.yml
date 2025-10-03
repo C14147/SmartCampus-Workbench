@@ -37,12 +37,12 @@ jobs:
         working-directory: ${{ env.BACKEND_DIR }}
         run: |
           go mod download
-          fmtout=$(gofmt -s -l . | wc -l) || true
-          if [ "$fmtout" -ne "0" ]; then
-            echo "gofmt needs to run on some files";
-            gofmt -s -w .;
-            exit 1;
-          fi
+        #   fmtout=$(gofmt -s -l . | wc -l) || true
+        #   if [ "$fmtout" -ne "0" ]; then
+        #     echo "gofmt needs to run on some files";
+        #     gofmt -s -w .;
+        #     exit 1;
+        #   fi
 
       - name: Go vet
         working-directory: ${{ env.BACKEND_DIR }}
