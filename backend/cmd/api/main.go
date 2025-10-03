@@ -90,7 +90,6 @@ func main() {
         protected.PUT("/assignments/:id", handlers.UpdateAssignment)
         protected.DELETE("/assignments/:id", handlers.DeleteAssignment)
     }
-    }
 
     addr := ":" + cfg.Server.Port
     logger.Info("starting server", zap.String("addr", addr))
