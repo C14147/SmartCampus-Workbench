@@ -6,9 +6,9 @@ import (
     "github.com/gin-gonic/gin"
     "gorm.io/gorm"
 
-    "github.com/your-org/smartcampus/internal/models"
-    "github.com/your-org/smartcampus/internal/utils"
-    "github.com/your-org/smartcampus/pkg/response"
+    "github.com/C14147/SmartCampus-Workbench/internal/models"
+    "github.com/C14147/SmartCampus-Workbench/internal/utils"
+    "github.com/C14147/SmartCampus-Workbench/pkg/response"
 )
 
 func ListAssignments(c *gin.Context) {

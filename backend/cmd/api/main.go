@@ -6,12 +6,12 @@ import (
     "time"
 
     "github.com/gin-gonic/gin"
-    "github.com/your-org/smartcampus/internal/config"
-    "github.com/your-org/smartcampus/internal/db"
-    "github.com/your-org/smartcampus/internal/handlers"
-    authpkg "github.com/your-org/smartcampus/internal/auth"
-    "github.com/your-org/smartcampus/internal/models"
-    "github.com/your-org/smartcampus/internal/middleware"
+    "github.com/C14147/SmartCampus-Workbench/internal/config"
+    "github.com/C14147/SmartCampus-Workbench/internal/db"
+    "github.com/C14147/SmartCampus-Workbench/internal/handlers"
+    authpkg "github.com/C14147/SmartCampus-Workbench/internal/auth"
+    "github.com/C14147/SmartCampus-Workbench/internal/models"
+    "github.com/C14147/SmartCampus-Workbench/internal/middleware"
     "github.com/prometheus/client_golang/prometheus/promhttp"
     "go.uber.org/zap"
 )
@@ -27,7 +27,6 @@ func main() {
 
     // Initialize DB if DSN provided via env (DATABASE_DSN)
     dsn := cfgRawDSN(cfg)
-    var gdbConn *db.DB
 
     r := gin.Default()
     // register prometheus middleware
@@ -47,7 +46,7 @@ func main() {
             c.Set("db", gdb)
             c.Next()
         })
-        _ = gdbConn
+    // gdb is a *gorm.DB returned from db.Connect and stored in the request context above
     }
 
     r.GET("/health", func(c *gin.Context) {
