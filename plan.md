@@ -1,580 +1,464 @@
-# Workbench 智慧校园系统 - Go + PostgreSQL + Redis 架构设计
+# SmartCampus 智慧校园系统 - 总体开发计划
 
-## 🚀 技术栈架构
+## 📋 项目总览
 
-### 后端技术栈
-```yaml
-编程语言: Go 1.21+
-Web框架: 
-  - Gin (HTTP API)
-  - GORM (ORM)
-  - go-redis (Redis客户端)
-数据库:
-  - PostgreSQL 15+ (主数据存储)
-  - Redis 7.0+ (缓存/会话/消息队列)
-消息队列: 
-  - Redis Streams (轻量级消息队列)
-  - 或 NSQ (可选，用于高吞吐场景)
-实时通信:
-  - WebSocket (gorilla/websocket)
-  - Server-Sent Events (SSE)
-工具库:
-  - validator (数据验证)
-  - jwt-go (认证)
-  - bcrypt (加密)
-  - zap (日志)
-  - viper (配置管理)
+**SmartCampus** 是一个现代化的智慧校园系统，采用前后端分离架构，为学校提供完整的数字化管理解决方案。系统支持教师、学生和管理员三种角色，涵盖教学管理、作业系统、成绩管理、实时通信等核心功能。
+
+### 核心价值主张
+- 🎯 **统一平台**：整合校园各项业务，消除信息孤岛
+- ⚡ **高性能**：基于 Go + React 的高性能架构
+- 🎨 **现代化UI**：Windows Fluent Design 设计语言
+- 🔒 **安全可靠**：完善的权限管理和数据安全
+- 📱 **跨平台**：Web 应用，支持多设备访问
+
+## 🏗️ 技术架构总览
+
+### 后端技术栈 (Go)
+```go
+// 核心框架
+- Gin (Web框架)
+- Gorm (ORM)
+- PostgreSQL (数据库)
+- Redis (缓存)
+
+// 安全认证
+- JWT-Go (认证)
+- Casbin (权限管理)
+- Bcrypt (加密)
+
+// 实时通信
+- Gorilla WebSocket
+- Redis Pub/Sub
+
+// 工具链
+- Viper (配置管理)
+- Zap (日志)
+- Testify (测试)
 ```
 
-### 前端技术栈 (保持不变，与plan.md一致)
+### 前端技术栈 (React + Fluent UI)
 ```typescript
-React 18 + TypeScript + Vite + Ant Design
+// 核心框架
+- React 18 + TypeScript
+- Vite (构建工具)
+- Fluent UI v9 (组件库)
+
+// 状态管理
+- Redux Toolkit + RTK Query
+- React Hook Form (表单)
+
+// 功能模块
+- React Router (路由)
+- Axios (HTTP客户端)
+- Chart.js (数据可视化)
 ```
 
-## 🏗️ 系统架构设计
-
-### 后端微服务架构
-```
-Workbench Backend (Go)
-├── API网关层
-│   ├── 请求路由 & 负载均衡
-│   ├── JWT认证中间件
-│   ├── 速率限制 (Redis)
-│   ├── 请求日志 & 审计
-│   └── CORS处理
-├── 业务服务层
-│   ├── 用户服务 (auth.go, user.go)
-│   ├── 课程服务 (course.go, class.go)
-│   ├── 作业服务 (assignment.go, submission.go)
-│   ├── 成绩服务 (grade.go, analysis.go)
-│   ├── 消息服务 (message.go, notification.go)
-│   └── 文件服务 (upload.go, file.go)
-├── 数据访问层
-│   ├── PostgreSQL (GORM)
-│   ├── Redis (缓存 & 会话)
-│   └── 数据库连接池
-└── 支撑服务层
-    ├── 定时任务 (cron)
-    ├── 实时通信 (WebSocket)
-    ├── 文件存储 (本地/MinIO)
-    └── 监控告警 (Prometheus)
-```
-
-## 🗄️ 数据库设计
-
-### PostgreSQL 核心表结构
-
+### 数据库设计 (PostgreSQL)
 ```sql
--- 用户表
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('teacher', 'student', 'admin')),
-    full_name VARCHAR(100) NOT NULL,
-    avatar_url VARCHAR(255),
-    is_active BOOLEAN DEFAULT true,
-    last_login_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 课程表
-CREATE TABLE courses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(200) NOT NULL,
-    description TEXT,
-    code VARCHAR(50) UNIQUE NOT NULL,
-    teacher_id UUID NOT NULL REFERENCES users(id),
-    semester VARCHAR(50),
-    credits INTEGER DEFAULT 0,
-    is_published BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 课程-学生关联表
-CREATE TABLE course_students (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id UUID NOT NULL REFERENCES courses(id),
-    student_id UUID NOT NULL REFERENCES users(id),
-    enrolled_at TIMESTAMPTZ DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'active',
-    UNIQUE(course_id, student_id)
-);
-
--- 作业表
-CREATE TABLE assignments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    course_id UUID NOT NULL REFERENCES courses(id),
-    title VARCHAR(200) NOT NULL,
-    description TEXT,
-    due_date TIMESTAMPTZ NOT NULL,
-    max_score INTEGER DEFAULT 100,
-    assignment_type VARCHAR(50) DEFAULT 'homework',
-    attachments JSONB,
-    created_by UUID NOT NULL REFERENCES users(id),
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 作业提交表
-CREATE TABLE submissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    assignment_id UUID NOT NULL REFERENCES assignments(id),
-    student_id UUID NOT NULL REFERENCES users(id),
-    content TEXT,
-    attachments JSONB,
-    submitted_at TIMESTAMPTZ DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'submitted',
-    score INTEGER,
-    feedback TEXT,
-    graded_by UUID REFERENCES users(id),
-    graded_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(assignment_id, student_id)
-);
-
--- 消息表
-CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sender_id UUID NOT NULL REFERENCES users(id),
-    receiver_id UUID REFERENCES users(id),
-    course_id UUID REFERENCES courses(id),
-    title VARCHAR(200),
-    content TEXT NOT NULL,
-    message_type VARCHAR(50) DEFAULT 'notification',
-    is_read BOOLEAN DEFAULT false,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 创建索引优化查询性能
-CREATE INDEX idx_courses_teacher_id ON courses(teacher_id);
-CREATE INDEX idx_course_students_course_id ON course_students(course_id);
-CREATE INDEX idx_course_students_student_id ON course_students(student_id);
-CREATE INDEX idx_assignments_course_id ON assignments(course_id);
-CREATE INDEX idx_submissions_assignment_id ON submissions(assignment_id);
-CREATE INDEX idx_submissions_student_id ON submissions(student_id);
-CREATE INDEX idx_messages_receiver_id ON messages(receiver_id);
-CREATE INDEX idx_messages_course_id ON messages(course_id);
-CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
+-- 核心表结构
+- users (用户表)
+- schools (学校表)
+- classes (班级表)
+- courses (课程表)
+- assignments (作业表)
+- submissions (提交表)
+- grades (成绩表)
+- messages (消息表)
 ```
 
-### Redis 数据结构设计
+### 部署架构
+```
+Docker + Docker Compose
+├── 前端容器 (Nginx + React)
+├── 后端容器 (Go + Gin)
+├── 数据库容器 (PostgreSQL)
+├── 缓存容器 (Redis)
+└── 反向代理 (可选)
+```
 
-```go
-// Redis Key 设计模式
-type RedisKeys struct {
-    // 用户会话
-    UserSession(userID string) string { return fmt.Sprintf("session:%s", userID) }
-    
-    // 课程缓存
-    CourseCache(courseID string) string { return fmt.Sprintf("course:%s", courseID) }
-    
-    // 作业缓存
-    AssignmentCache(assignmentID string) string { return fmt.Sprintf("assignment:%s", assignmentID) }
-    
-    // 限流器
-    RateLimit(key string) string { return fmt.Sprintf("ratelimit:%s", key) }
-    
-    // 在线用户
-    OnlineUsers() string { return "online:users" }
-    
-    // 消息队列
-    MessageQueue() string { return "queue:messages" }
+## 📅 总体实施时间表 (16周)
+
+### 第一阶段：项目基础搭建 (第1-4周)
+
+#### 第1-2周：后端基础架构
+```bash
+# 主要任务
+✅ 项目结构设计和初始化
+✅ 配置管理系统 (Viper)
+✅ 数据库设计和迁移脚本
+✅ 日志系统 (Zap)
+✅ 基础中间件开发
+```
+
+#### 第3-4周：前端基础架构
+```bash
+# 主要任务
+✅ React + TypeScript 项目初始化
+✅ Fluent UI 主题系统配置
+✅ 路由和导航架构
+✅ 状态管理 (Redux Toolkit) 配置
+✅ 基础组件库开发
+```
+
+### 第二阶段：核心功能开发 (第5-10周)
+
+#### 第5-6周：用户认证和权限系统
+```bash
+# 后端任务
+✅ JWT 认证系统
+✅ Casbin 权限管理
+✅ 用户管理 API
+✅ 角色权限验证
+
+# 前端任务  
+✅ 登录/注册页面
+✅ 权限路由守卫
+✅ 用户资料管理
+```
+
+#### 第7-8周：教学管理模块
+```bash
+# 后端任务
+✅ 学校/班级管理 API
+✅ 课程管理 API
+✅ 学生管理 API
+
+# 前端任务
+✅ 班级管理界面
+✅ 学生信息管理
+✅ 课程表功能
+```
+
+#### 第9-10周：作业和成绩系统
+```bash
+# 后端任务
+✅ 作业发布/提交 API
+✅ 成绩管理 API
+✅ 文件上传服务
+
+# 前端任务
+✅ 作业管理界面
+✅ 作业提交功能
+✅ 成绩查看和分析
+```
+
+### 第三阶段：高级功能开发 (第11-13周)
+
+#### 第11周：实时通信系统
+```bash
+# 后端任务
+✅ WebSocket 服务
+✅ 消息推送系统
+✅ 通知管理 API
+
+# 前端任务
+✅ 实时聊天界面
+✅ 消息通知组件
+✅ WebSocket 集成
+```
+
+#### 第12周：数据可视化和报表
+```bash
+# 后端任务
+✅ 数据统计 API
+✅ 报表生成服务
+✅ 分析数据聚合
+
+# 前端任务
+✅ 仪表盘图表
+✅ 成绩分析视图
+✅ 学习报告生成
+```
+
+#### 第13周：系统集成和优化
+```bash
+# 全栈任务
+✅ API 集成测试
+✅ 性能优化
+✅ 错误处理完善
+✅ 用户体验优化
+```
+
+### 第四阶段：测试和部署 (第14-16周)
+
+#### 第14周：全面测试
+```bash
+# 测试任务
+✅ 单元测试 (Go + React)
+✅ 集成测试
+✅ 性能测试
+✅ 安全测试
+✅ 用户验收测试
+```
+
+#### 第15周：部署准备
+```bash
+# 部署任务
+✅ Docker 容器化
+✅ 环境配置管理
+✅ 数据库初始化
+✅ 监控和日志配置
+```
+
+#### 第16周：上线发布
+```bash
+# 发布任务
+✅ 生产环境部署
+✅ 数据迁移
+✅ 用户培训
+✅ 文档整理
+```
+
+## 👥 团队角色和职责
+
+### 后端开发团队 (2-3人)
+| 角色 | 职责 | 技术栈 |
+|------|------|--------|
+| 后端架构师 | 系统架构设计、技术选型 | Go, Gin, PostgreSQL |
+| API 开发工程师 | 业务逻辑开发、API 设计 | Go, Gorm, RESTful |
+| 数据库工程师 | 数据库设计、优化 | PostgreSQL, SQL |
+
+### 前端开发团队 (2-3人)
+| 角色 | 职责 | 技术栈 |
+|------|------|--------|
+| 前端架构师 | UI架构、状态管理 | React, TypeScript, Fluent UI |
+| UI/UX 工程师 | 界面设计、用户体验 | Fluent Design, CSS |
+| 前端开发工程师 | 组件开发、功能实现 | React, Redux, Axios |
+
+### 运维和测试团队 (1-2人)
+| 角色 | 职责 | 技术栈 |
+|------|------|--------|
+| DevOps 工程师 | 部署、监控、运维 | Docker, Nginx, CI/CD |
+| 测试工程师 | 质量保证、测试 | Jest, Postman, 自动化测试 |
+
+## 🎯 关键里程碑和交付物
+
+### 里程碑 1：项目启动 (第1周结束)
+```markdown
+- [ ] 项目章程和范围定义
+- [ ] 技术栈最终确定
+- [ ] 开发环境搭建完成
+- [ ] 团队分工明确
+```
+
+### 里程碑 2：MVP 版本 (第8周结束)
+```markdown
+- [ ] 用户认证系统完成
+- [ ] 基础教学管理功能
+- [ ] 作业提交和批改
+- [ ] 基础前端界面
+```
+
+### 里程碑 3：功能完整版 (第13周结束)
+```markdown
+- [ ] 所有核心功能完成
+- [ ] 实时通信系统
+- [ ] 数据分析和报表
+- [ ] 系统集成测试通过
+```
+
+### 里程碑 4：生产就绪 (第16周结束)
+```markdown
+- [ ] 全面测试通过
+- [ ] 生产环境部署
+- [ ] 用户培训完成
+- [ ] 项目文档齐全
+```
+
+## 🔧 开发规范和标准
+
+### 代码规范
+```bash
+# Go 代码规范
+- 使用 gofmt 和 goimports
+- 遵循 Effective Go 指南
+- 单元测试覆盖率 >80%
+
+# TypeScript 代码规范
+- 使用 ESLint + Prettier
+- 严格的类型检查
+- 组件测试覆盖
+```
+
+### API 设计标准
+```typescript
+// 统一响应格式
+interface ApiResponse<T> {
+  code: number;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
+// 标准错误处理
+interface ApiError {
+  code: number;
+  message: string;
+  details?: any;
 }
 ```
 
-## 🔧 Go 项目结构
-
-```
-workbench-backend/
-├── cmd/
-│   └── api/
-│       └── main.go                 # 应用入口
-├── internal/
-│   ├── config/
-│   │   └── config.go              # 配置管理
-│   ├── database/
-│   │   ├── postgres.go            # PostgreSQL连接
-│   │   └── redis.go               # Redis连接
-│   ├── models/
-│   │   ├── user.go
-│   │   ├── course.go
-│   │   ├── assignment.go
-│   │   └── ...                    # 其他数据模型
-│   ├── handlers/
-│   │   ├── auth.go
-│   │   ├── user.go
-│   │   ├── course.go
-│   │   └── ...                    # HTTP处理器
-│   ├── services/
-│   │   ├── auth_service.go
-│   │   ├── course_service.go
-│   │   ├── assignment_service.go
-│   │   └── ...                    # 业务逻辑层
-│   ├── repositories/
-│   │   ├── user_repo.go
-│   │   ├── course_repo.go
-│   │   ├── assignment_repo.go
-│   │   └── ...                    # 数据访问层
-│   ├── middleware/
-│   │   ├── auth.go
-│   │   ├── cors.go
-│   │   ├── logger.go
-│   │   └── ratelimit.go           # 中间件
-│   ├── utils/
-│   │   ├── jwt.go
-│   │   ├── password.go
-│   │   ├── validator.go
-│   │   └── ...                    # 工具函数
-│   └── websocket/
-│       ├── hub.go
-│       ├── client.go
-│       └── handler.go             # WebSocket服务
-├── pkg/
-│   ├── response/
-│   │   └── response.go            # 统一响应格式
-│   └── cache/
-│       └── cache.go               # 缓存工具
-├── deployments/
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   └── nginx.conf
-├── scripts/
-│   ├── migrate.go                 # 数据库迁移
-│   └── seed.go                    # 数据填充
-├── go.mod
-└── go.sum
+### 数据库规范
+```sql
+-- 命名规范
+- 表名：复数形式，小写，下划线分隔
+- 字段名：小写，下划线分隔
+- 主键：id (UUID)
+- 时间戳：created_at, updated_at
 ```
 
-## 🎯 核心API设计
+## 📊 质量保证计划
 
-### 认证模块
-```go
-// auth.go
-type AuthHandler struct {
-    userService services.UserService
-    jwtUtil     utils.JWTUtil
-}
-
-func (h *AuthHandler) Login(c *gin.Context) {
-    var req LoginRequest
-    if err := c.ShouldBindJSON(&req); err != nil {
-        response.BadRequest(c, "无效的请求参数")
-        return
-    }
-    
-    user, err := h.userService.Authenticate(req.Username, req.Password)
-    if err != nil {
-        response.Unauthorized(c, "用户名或密码错误")
-        return
-    }
-    
-    token, err := h.jwtUtil.GenerateToken(user.ID, user.Role)
-    if err != nil {
-        response.ServerError(c, "生成token失败")
-        return
-    }
-    
-    response.Success(c, LoginResponse{
-        Token: token,
-        User:  user.ToDTO(),
-    })
-}
-```
-
-### 课程服务
-```go
-// course_service.go
-type CourseService struct {
-    courseRepo repositories.CourseRepository
-    cache      cache.Cache
-}
-
-func (s *CourseService) GetTeacherCourses(teacherID string, page, pageSize int) (*PaginationResponse, error) {
-    cacheKey := fmt.Sprintf("teacher_courses:%s:%d:%d", teacherID, page, pageSize)
-    
-    // 尝试从缓存获取
-    var result PaginationResponse
-    if err := s.cache.Get(cacheKey, &result); err == nil {
-        return &result, nil
-    }
-    
-    // 缓存未命中，查询数据库
-    courses, total, err := s.courseRepo.FindByTeacherID(teacherID, page, pageSize)
-    if err != nil {
-        return nil, err
-    }
-    
-    result = PaginationResponse{
-        Data:  courses,
-        Total: total,
-        Page:  page,
-    }
-    
-    // 写入缓存，过期时间5分钟
-    s.cache.Set(cacheKey, result, 5*time.Minute)
-    
-    return &result, nil
-}
-```
-
-## 🐳 容器化部署
-
-### 后端 Dockerfile
-```dockerfile
-# 多阶段构建
-FROM golang:1.21-alpine AS builder
-
-WORKDIR /app
-
-# 安装依赖
-RUN apk add --no-cache git ca-certificates tzdata
-
-# 复制go模块文件
-COPY go.mod go.sum ./
-RUN go mod download
-
-# 复制源代码
-COPY . .
-
-# 构建应用
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api
-
-# 生产镜像
-FROM alpine:latest
-
-RUN apk --no-cache add ca-certificates tzdata
-WORKDIR /root/
-
-# 复制二进制文件
-COPY --from=builder /app/main .
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-
-# 创建非root用户
-RUN addgroup -g 1001 -S app && \
-    adduser -u 1001 -S app -G app
-
-# 切换用户
-USER app
-
-# 暴露端口
-EXPOSE 8080
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-CMD ["./main"]
-```
-
-### 更新后的 docker-compose.yml
+### 测试策略
 ```yaml
-version: '3.8'
+单元测试:
+  - 后端: Go test, 覆盖率 >80%
+  - 前端: Jest + React Testing Library
+  - 数据库: 测试数据隔离
 
-services:
-  # Go后端服务
-  backend:
-    build:
-      context: ./workbench-backend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    environment:
-      - APP_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=smartcampus
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - REDIS_URL=redis:6379
-      - JWT_SECRET=your-super-secret-jwt-key
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - campus-network
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+集成测试:
+  - API 测试: Postman + Newman
+  - E2E 测试: Playwright
+  - 性能测试: k6
 
-  # 前端服务 (保持不变)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    environment:
-      - API_BASE_URL=http://backend:8080
-    depends_on:
-      - backend
-    networks:
-      - campus-network
-
-  # PostgreSQL数据库
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=smartcampus
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db:/docker-entrypoint-initdb.d
-    networks:
-      - campus-network
-    command: >
-      postgres 
-      -c shared_preload_libraries=pg_stat_statements 
-      -c pg_stat_statements.track=all 
-      -c max_connections=200 
-      -c shared_buffers=256MB 
-      -c effective_cache_size=1GB
-
-  # Redis缓存
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    networks:
-      - campus-network
-
-volumes:
-  postgres_data:
-  redis_data:
-
-networks:
-  campus-network:
-    driver: bridge
+安全测试:
+  - 认证授权测试
+  - SQL 注入防护
+  - XSS/CSRF 防护
 ```
 
-## ⚡ 性能优化配置
+### 代码质量门禁
+```bash
+# 预提交检查
+- 代码格式化检查
+- 静态代码分析
+- 单元测试通过
+- 构建成功
 
-### PostgreSQL 配置优化
-```sql
--- 高并发配置
-ALTER SYSTEM SET max_connections = 200;
-ALTER SYSTEM SET shared_buffers = '256MB';
-ALTER SYSTEM SET effective_cache_size = '1GB';
-ALTER SYSTEM SET work_mem = '4MB';
-ALTER SYSTEM SET maintenance_work_mem = '64MB';
-ALTER SYSTEM SET random_page_cost = 1.1;
-ALTER SYSTEM SET effective_io_concurrency = 200;
+# 合并请求要求
+- 代码审查通过
+- 集成测试通过
+- 性能基准测试
+- 安全扫描通过
 ```
 
-### Go 服务配置
+## 🚀 部署和运维计划
+
+### 环境规划
+```yaml
+开发环境:
+  - 目的: 功能开发
+  - 部署: 本地 Docker
+  - 数据: 测试数据
+
+测试环境:
+  - 目的: 集成测试
+  - 部署: 内网服务器
+  - 数据: 模拟数据
+
+生产环境:
+  - 目的: 正式使用
+  - 部署: 内网服务器集群
+  - 数据: 真实数据
+```
+
+### 监控和告警
 ```go
-// config/config.go
-type Config struct {
-    Server struct {
-        Port         string        `mapstructure:"port"`
-        ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-        WriteTimeout time.Duration `mapstructure:"write_timeout"`
-        IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
-    } `mapstructure:"server"`
-    
-    Database struct {
-        MaxOpenConns int `mapstructure:"max_open_conns"`
-        MaxIdleConns int `mapstructure:"max_idle_conns"`
-        ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
-    } `mapstructure:"database"`
-    
-    Redis struct {
-        PoolSize int `mapstructure:"pool_size"`
-        MinIdleConns int `mapstructure:"min_idle_conns"`
-    } `mapstructure:"redis"`
-}
-
-// 推荐的配置值
-func DefaultConfig() *Config {
-    return &Config{
-        Server: struct{
-            Port string
-            ReadTimeout time.Duration
-            WriteTimeout time.Duration  
-            IdleTimeout time.Duration
-        }{
-            Port: "8080",
-            ReadTimeout: 15 * time.Second,
-            WriteTimeout: 15 * time.Second,
-            IdleTimeout: 60 * time.Second,
-        },
-        Database: struct{
-            MaxOpenConns int
-            MaxIdleConns int
-            ConnMaxLifetime time.Duration
-        }{
-            MaxOpenConns: 25,
-            MaxIdleConns: 25,
-            ConnMaxLifetime: 5 * time.Minute,
-        },
-        Redis: struct{
-            PoolSize int
-            MinIdleConns int
-        }{
-            PoolSize: 10,
-            MinIdleConns: 5,
-        },
-    }
+// 健康检查端点
+GET /health
+{
+  "status": "healthy",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "version": "1.0.0",
+  "checks": {
+    "database": "connected",
+    "redis": "connected", 
+    "disk": "normal"
+  }
 }
 ```
 
-## 🔒 安全设计
+## ⚠️ 风险管理和应对策略
 
-### JWT 认证流程
-```go
-// middleware/auth.go
-func AuthMiddleware(jwtUtil utils.JWTUtil) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        tokenString := c.GetHeader("Authorization")
-        if tokenString == "" {
-            response.Unauthorized(c, "缺少认证token")
-            c.Abort()
-            return
-        }
-        
-        claims, err := jwtUtil.ValidateToken(tokenString)
-        if err != nil {
-            response.Unauthorized(c, "无效的token")
-            c.Abort()
-            return
-        }
-        
-        // 将用户信息存入上下文
-        c.Set("userID", claims.UserID)
-        c.Set("userRole", claims.Role)
-        c.Next()
-    }
-}
+### 技术风险
+| 风险 | 概率 | 影响 | 应对策略 |
+|------|------|------|----------|
+| 性能瓶颈 | 中 | 高 | 性能测试、缓存优化、数据库索引 |
+| 安全漏洞 | 低 | 高 | 安全扫描、代码审查、定期更新 |
+| 第三方依赖问题 | 中 | 中 | 依赖锁定、备用方案、及时更新 |
 
-// 基于角色的访问控制
-func RBAC(allowedRoles ...string) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        userRole, exists := c.Get("userRole")
-        if !exists {
-            response.Unauthorized(c, "未认证用户")
-            c.Abort()
-            return
-        }
-        
-        for _, role := range allowedRoles {
-            if userRole == role {
-                c.Next()
-                return
-            }
-        }
-        
-        response.Forbidden(c, "权限不足")
-        c.Abort()
-    }
-}
+### 项目风险
+| 风险 | 概率 | 影响 | 应对策略 |
+|------|------|------|----------|
+| 需求变更 | 高 | 中 | 敏捷开发、定期沟通、变更控制 |
+| 进度延误 | 中 | 高 | 里程碑跟踪、缓冲时间、资源调整 |
+| 技术债务 | 中 | 中 | 代码审查、重构计划、技术规范 |
+
+## 📈 成功指标
+
+### 技术指标
+```yaml
+性能指标:
+  - API响应时间: <200ms (P95)
+  - 页面加载时间: <3s
+  - 并发用户数: >1000
+  - 系统可用性: >99.5%
+
+质量指标:
+  - 代码覆盖率: >80%
+  - 缺陷密度: <0.1/千行代码
+  - 平均修复时间: <4小时
 ```
 
-这个新的架构设计充分利用了 Go 语言的高并发特性和 PostgreSQL + Redis 的高性能组合，能够很好地支撑智慧校园系统的高并发访问和复杂的业务逻辑需求。
+### 业务指标
+```yaml
+用户满意度:
+  - 系统易用性评分: >4.5/5
+  - 功能完整性: >95%
+  - 用户培训时间: <2小时
+
+运维指标:
+  - 部署成功率: 100%
+  - 回滚时间: <30分钟
+  - 监控覆盖率: 100%
+```
+
+## 💰 资源预算估算
+
+### 人力资源
+```markdown
+- 后端开发: 3人 × 16周
+- 前端开发: 3人 × 16周  
+- 测试运维: 2人 × 8周
+- 项目管理: 1人 × 16周
+```
+
+### 技术资源
+```markdown
+- 开发设备: 高性能工作站
+- 测试服务器: 内网服务器集群
+- 软件许可: 开源技术栈
+- 云服务: 可选CDN/存储
+```
+
+## 🎉 项目交付物
+
+### 代码交付物
+```markdown
+- ✅ 完整的源代码
+- ✅ 数据库设计和迁移脚本
+- ✅ 部署配置和脚本
+- ✅ API 文档
+- ✅ 技术设计文档
+```
+
+### 文档交付物
+```markdown
+- ✅ 用户使用手册
+- ✅ 系统管理员手册
+- ✅ 部署和运维指南
+- ✅ 故障排除手册
+- ✅ 培训材料
+```
+
+这个总体计划为 SmartCampus 项目提供了完整的开发路线图，从技术选型到实施步骤，从团队组织到风险管理，确保项目能够按时高质量交付。计划采用敏捷开发方法，每2周进行一次迭代评审，确保项目始终朝着正确的方向前进。

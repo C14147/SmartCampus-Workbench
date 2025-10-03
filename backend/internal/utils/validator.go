@@ -1,9 +1,11 @@
 package utils
 
-import "github.com/go-playground/validator/v10"
+import (
+    "github.com/go-playground/validator/v10"
+)
 
-var validate = validator.New()
+var Validate = validator.New()
 
 func ValidateStruct(s interface{}) error {
-    return validate.Struct(s)
+    return Validate.Struct(s)
 }

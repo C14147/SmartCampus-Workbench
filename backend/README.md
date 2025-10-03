@@ -1,72 +1,31 @@
-# SmartCampus Workbench Backend
+# SmartCampus Backend (minimal scaffold)
 
-A Go-based backend for SmartCampus, using Gin, GORM, PostgreSQL, and Redis.
+This folder contains a minimal Go backend scaffold for the SmartCampus project.
 
-## Features
-- JWT authentication & RBAC
-- User, course, assignment, submission, message, and file management
-- PostgreSQL for persistent storage
-- Redis for caching and session management
-- Modular architecture (handlers, services, repositories)
-- Docker & docker-compose deployment
+Features included:
+- Gin HTTP server with health endpoint
+- Minimal JWT-based login stub (returns a token for demo user)
+- Config loader via Viper
+- Dockerfile for building the server image
 
-## Project Structure
-```
-backend/
-├── cmd/api/main.go                # Entry point
-├── internal/
-│   ├── config/config.go           # Config management
-│   ├── database/postgres.go       # PostgreSQL connection
-│   ├── database/redis.go          # Redis connection
-│   ├── models/                    # Data models
-│   ├── handlers/                  # HTTP handlers
-│   ├── services/                  # Business logic
-│   ├── repositories/              # Data access
-│   ├── middleware/                # Gin middlewares
-│   ├── utils/                     # Utility functions
-│   └── websocket/                 # WebSocket support
-├── pkg/
-│   ├── response/response.go       # Unified response
-│   └── cache/                     # Cache interface & Redis impl
-├── scripts/init_db.sql            # DB schema
-├── Dockerfile                     # Backend Dockerfile
-├── deploy.sh, stop.sh             # Deployment scripts
-├── API_DOCUMENT.md                # API documentation
-└── README.md                      # This file
-```
+How to run locally (requires Go 1.21):
 
-## Quick Start
+1. Copy the example config if you want to set a secret:
 
-### 1. Build & Run (Docker)
-```bash
-cd backend
-./deploy.sh
-```
+   cp config/config.yaml.example config/config.yaml
 
-### 2. Stop
-```bash
-./stop.sh
-```
+2. (Optional) Configure PostgreSQL and provide a DSN via env:
 
-### 3. Manual DB Init
-If not using docker-compose, run:
-```bash
-psql -U postgres -d smartcampus -f scripts/init_db.sql
-```
+   $env:DATABASE_DSN = 'postgres://user:pass@localhost:5432/smartcampus?sslmode=disable'
 
-### 4. Environment Variables
-Set in docker-compose or `.env`:
-- `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
-- `REDIS_URL`
-- `JWT_SECRET`
+3. Build and run:
 
-## API Documentation
-See [API_DOCUMENT.md](./API_DOCUMENT.md)
+   go run ./cmd/api
 
-## Development
-- Go 1.21+
-- PostgreSQL 15+
-- Redis 7+
-- Install dependencies: `go mod tidy`
-- Run locally: `go run cmd/api/main.go`
+Endpoints:
+- GET /health
+- POST /api/v1/auth/login  { username, password }
+- GET /api/v1/auth/me
 
+This scaffold is intentionally small. Extend handlers, add persistent storage,
+authentication middleware, and tests as next steps.

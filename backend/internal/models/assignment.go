@@ -1,17 +1,22 @@
 package models
 
-import "time"
+import (
+    "time"
+
+    "gorm.io/gorm"
+)
 
 type Assignment struct {
-    ID            string    `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
-    CourseID      string    `gorm:"type:uuid;not null" json:"course_id"`
-    Title         string    `gorm:"size:200;not null" json:"title"`
-    Description   string    `gorm:"type:text" json:"description"`
-    DueDate       time.Time `json:"due_date"`
-    MaxScore      int       `gorm:"default:100" json:"max_score"`
-    AssignmentType string   `gorm:"size:50;default:homework" json:"assignment_type"`
-    Attachments   string    `gorm:"type:jsonb" json:"attachments"`
-    CreatedBy     string    `gorm:"type:uuid;not null" json:"created_by"`
-    CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
-    UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+    ID          string         `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
+    CourseID    string         `gorm:"type:uuid;not null" json:"course_id"`
+    Title       string         `gorm:"size:200;not null" json:"title"`
+    Description string         `json:"description"`
+    AssignmentType string      `gorm:"size:50;default:'homework'" json:"assignment_type"`
+    MaxScore    float64        `gorm:"type:decimal(5,2);default:100.00" json:"max_score"`
+    DueDate     time.Time      `json:"due_date"`
+    Attachments string         `gorm:"type:jsonb;default:'[]'" json:"attachments"`
+    Status      string         `gorm:"size:20;default:'published'" json:"status"`
+    CreatedAt   time.Time      `json:"created_at"`
+    UpdatedAt   time.Time      `json:"updated_at"`
+    DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }

@@ -1,0 +1,8 @@
+server:
+  port: "8080"
+
+jwt:
+  secret: "change-me-in-production"
+
+# Optionally set DATABASE_DSN environment variable instead of specifying here
+# DATABASE_DSN=postgres://user:pass@localhost:5432/dbname?sslmode=disable

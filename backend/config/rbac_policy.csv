@@ -1,0 +1,4 @@
+# policy: sub, obj, act
+admin, /schools, (GET|POST|PUT|DELETE)
+teacher, /assignments, (GET|POST|PUT|DELETE)
+student, /assignments, GET
