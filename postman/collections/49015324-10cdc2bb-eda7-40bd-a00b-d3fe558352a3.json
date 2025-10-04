@@ -1,0 +1,761 @@
+{
+	"info": {
+		"_postman_id": "49015324-10cdc2bb-eda7-40bd-a00b-d3fe558352a3",
+		"name": "Campus Smart Management System",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "login",
+					"id": "49015324-50f8099c-4518-4105-adfb-405a75a084a5",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "/auth/login",
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "49015324-87fc3e27-c3b7-4f8e-9e6c-9c3337c9e442",
+							"name": "Login Success Example",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"username\": \"john.doe\",\n  \"password\": \"password123\"\n}",
+									"options": {
+										"raw": "json"
+									}
+								},
+								"url": {
+									"raw": "/auth/login",
+									"path": [
+										"auth",
+										"login"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"responseTime": null,
+							"body": "{\n  \"status\": \"success\",\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"user\": {\n      \"id\": 12345,\n      \"role\": \"student\",\n      \"name\": \"John Doe\",\n      \"email\": \"john.doe@example.com\"\n    }\n  }\n}"
+						}
+					]
+				},
+				{
+					"name": "logout",
+					"id": "49015324-caaf940b-e195-4531-b72e-e4ca2e362c67",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "/auth/logout",
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refreshToken",
+					"id": "49015324-6ec77787-15d8-45e4-b4af-b51461b25662",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "/auth/refresh-token",
+							"path": [
+								"auth",
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "49015324-8fd3619b-1657-4097-9cab-3121909011ea"
+		},
+		{
+			"name": "public",
+			"item": [
+				{
+					"name": "getAnnouncements",
+					"id": "49015324-95e0d3d5-1fee-4d4a-b6fd-ce1dec97833f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/public/announcements",
+							"path": [
+								"public",
+								"announcements"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getEvents",
+					"id": "49015324-99f34082-3fae-4fba-a8c2-70e6ac9bd5b4",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/public/events",
+							"path": [
+								"public",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Announcement",
+					"id": "49015324-a6dfaadd-a96d-4dbc-b7d1-f018571108c8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/public/announcements",
+							"path": [
+								"public",
+								"announcements"
+							]
+						},
+						"description": "Generated from cURL: POST /public/announcements\nContent-Type: application/json\n\n{\n  \"title\": \"Campus Maintenance Notice\",\n  \"content\": \"The campus will undergo maintenance on Saturday.\",\n  \"date\": \"2024-06-15T09:00:00Z\"\n}"
+					},
+					"response": [
+						{
+							"id": "49015324-f6c6b444-97ae-45db-9483-5fe5dec2e148",
+							"name": "Create Announcement Example",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"Campus Maintenance Notice\",\n  \"content\": \"The campus will undergo maintenance on Saturday.\",\n  \"date\": \"2024-06-15T09:00:00Z\"\n}",
+									"options": {
+										"raw": "json"
+									}
+								},
+								"url": {
+									"raw": "/public/announcements",
+									"path": [
+										"public",
+										"announcements"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"responseTime": null,
+							"body": "{\n  \"status\": \"success\",\n  \"message\": \"Announcement created successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"title\": \"Campus Maintenance Notice\",\n    \"content\": \"The campus will undergo maintenance on Saturday.\",\n    \"date\": \"2024-06-15T09:00:00Z\",\n    \"createdBy\": {\n      \"id\": 12,\n      \"name\": \"Admin User\"\n    }\n  }\n}"
+						}
+					]
+				}
+			],
+			"id": "49015324-76d978d7-13d5-4f9a-94fc-0298d2f6d538"
+		},
+		{
+			"name": "user",
+			"item": [
+				{
+					"name": "getUserProfile",
+					"id": "49015324-44787bac-1c05-471f-a2b7-ea8b60b56629",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/user/profile",
+							"path": [
+								"user",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateUserProfile",
+					"id": "49015324-0ae7fd0b-c84d-4ce8-9cf4-f6b9ba01bf04",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "/user/profile",
+							"path": [
+								"user",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "changePassword",
+					"id": "49015324-9f2fbbca-bef9-4a25-bb79-7f8452b5865c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "/user/change-password",
+							"path": [
+								"user",
+								"change-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Profile",
+					"id": "49015324-c7958a89-5032-4208-9db7-8f17285b5b2b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/user/profile",
+							"path": [
+								"user",
+								"profile"
+							]
+						},
+						"description": "Generated from cURL: GET /user/profile\nContent-Type: application/json"
+					},
+					"response": [
+						{
+							"id": "49015324-eff18060-18b0-4841-bb50-790e063491b6",
+							"name": "User Profile Example",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": "json"
+									}
+								},
+								"url": {
+									"raw": "/user/profile",
+									"path": [
+										"user",
+										"profile"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"responseTime": null,
+							"body": "{\n  \"status\": \"success\",\n  \"message\": \"Profile fetched successfully\",\n  \"data\": {\n    \"id\": 12345,\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"role\": \"student\",\n    \"phone\": \"+886912345678\",\n    \"avatarUrl\": \"https://example.com/avatar.jpg\",\n    \"department\": \"Computer Science\"\n  }\n}"
+						}
+					]
+				}
+			],
+			"id": "49015324-4879b008-2e30-4de3-afe2-520590b9e7c8"
+		},
+		{
+			"name": "teacher",
+			"item": [
+				{
+					"name": "getTeacherSchedule",
+					"id": "49015324-16803e83-e1d2-4d64-b7a6-b4ab97284d88",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/teacher/schedule",
+							"path": [
+								"teacher",
+								"schedule"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateTeacherSchedule",
+					"id": "49015324-6c6e208f-8c89-4d39-8438-cab605de38bd",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "/teacher/schedule",
+							"path": [
+								"teacher",
+								"schedule"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getTeacherClasses",
+					"id": "49015324-1cc81077-13df-46c0-9084-3d29161e4261",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/teacher/classes",
+							"path": [
+								"teacher",
+								"classes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Teacher Courses",
+					"id": "49015324-91364664-a703-4cf5-9207-27500bc30fa9",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/teacher/courses",
+							"path": [
+								"teacher",
+								"courses"
+							]
+						},
+						"description": "Generated from cURL: GET /teacher/courses\nContent-Type: application/json"
+					},
+					"response": [
+						{
+							"id": "49015324-630f4b8c-c97e-4475-8ff3-bc519fc15bcf",
+							"name": "Teacher Courses Example",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": "json"
+									}
+								},
+								"url": {
+									"raw": "/teacher/courses",
+									"path": [
+										"teacher",
+										"courses"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"responseTime": null,
+							"body": "{\n  \"status\": \"success\",\n  \"message\": \"Courses fetched successfully\",\n  \"data\": [\n    {\n      \"courseId\": 201,\n      \"courseName\": \"Introduction to Programming\",\n      \"semester\": \"2024 Spring\",\n      \"studentsEnrolled\": 45\n    },\n    {\n      \"courseId\": 202,\n      \"courseName\": \"Data Structures\",\n      \"semester\": \"2024 Spring\",\n      \"studentsEnrolled\": 38\n    }\n  ]\n}"
+						}
+					]
+				}
+			],
+			"id": "49015324-0af68dc1-3f01-4284-80b7-8723edf00e49"
+		},
+		{
+			"name": "student",
+			"item": [
+				{
+					"name": "getStudentGrades",
+					"id": "49015324-ba9ef4bd-5891-4a3c-930d-da5249aa0f8d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/student/grades",
+							"path": [
+								"student",
+								"grades"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getStudentAttendance",
+					"id": "49015324-703fa2c2-cf4b-42fc-b2c9-ec8d2127c358",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/student/attendance",
+							"path": [
+								"student",
+								"attendance"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getStudentSchedule",
+					"id": "49015324-df644d5c-3c82-4335-adda-73100e380f42",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/student/schedule",
+							"path": [
+								"student",
+								"schedule"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Student Grades",
+					"id": "49015324-83f70786-35a8-4681-9083-9ab9a1b533b9",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/student/grades",
+							"path": [
+								"student",
+								"grades"
+							]
+						},
+						"description": "Generated from cURL: GET /student/grades\nContent-Type: application/json"
+					},
+					"response": [
+						{
+							"id": "49015324-67ce8949-b2f1-4ed1-9929-e98808170ca2",
+							"name": "Student Grades Example",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "",
+									"options": {
+										"raw": "json"
+									}
+								},
+								"url": {
+									"raw": "/student/grades",
+									"path": [
+										"student",
+										"grades"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"responseTime": null,
+							"body": "{\n  \"status\": \"success\",\n  \"message\": \"Grades fetched successfully\",\n  \"data\": [\n    {\n      \"courseId\": 201,\n      \"courseName\": \"Introduction to Programming\",\n      \"grade\": \"A+\",\n      \"credits\": 3\n    },\n    {\n      \"courseId\": 202,\n      \"courseName\": \"Data Structures\",\n      \"grade\": \"A\",\n      \"credits\": 3\n    }\n  ]\n}"
+						}
+					]
+				}
+			],
+			"id": "49015324-1279a2d0-224a-46a5-96d4-dce26928c008"
+		},
+		{
+			"name": "parent",
+			"item": [
+				{
+					"name": "getChildGrades",
+					"id": "49015324-040c6cfc-2fe2-4870-a5d8-b30dae7ddb35",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/parent/child/grades",
+							"path": [
+								"parent",
+								"child",
+								"grades"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getChildAttendance",
+					"id": "49015324-92c61897-2bb1-47ac-9b48-61c7b8faec17",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/parent/child/attendance",
+							"path": [
+								"parent",
+								"child",
+								"attendance"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "49015324-be3fa0f9-66f4-4f09-88c5-f13778ab9b5b"
+		},
+		{
+			"name": "admin",
+			"item": [
+				{
+					"name": "getAllUsers",
+					"id": "49015324-4b18f704-2f93-401a-a101-98bb8b085015",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/admin/users",
+							"path": [
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "createUser",
+					"id": "49015324-28b5de71-9ca4-42d4-938f-c8e2be26452c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "/admin/users",
+							"path": [
+								"admin",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateUser",
+					"id": "49015324-e18e84fc-d074-46c4-8985-febe5a7491e7",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "/admin/users/{userId}",
+							"path": [
+								"admin",
+								"users",
+								"{userId}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteUser",
+					"id": "49015324-97dc80cd-c17c-4624-8afb-4db0c69e0a77",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "/admin/users/{userId}",
+							"path": [
+								"admin",
+								"users",
+								"{userId}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "49015324-cd596c7e-7175-4822-818f-808d2e41cae7"
+		},
+		{
+			"name": "shared",
+			"item": [
+				{
+					"name": "getNotifications",
+					"id": "49015324-7f94fd41-5de3-4bf2-bb3e-e5fed3cd8aae",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "/shared/notifications",
+							"path": [
+								"shared",
+								"notifications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "markNotificationRead",
+					"id": "49015324-8c40837e-7a48-45f4-9333-a970c162c922",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "/shared/notifications/{notificationId}/read",
+							"path": [
+								"shared",
+								"notifications",
+								"{notificationId}",
+								"read"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "49015324-6a3f2905-8e4e-48ba-8bc1-e04720915b5e"
+		}
+	]
+}
